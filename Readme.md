@@ -1,52 +1,41 @@
-# Project Title
+## Detecting slopes per pixel using spectral indices (DSWI)
 
-Simple overview of use/purpose.
+The purpose of this repository is to extract the slope (trend) per pixel of spectral indices (DSWI) derived 
+from Sentinel-2 using time series analysis with 10m resolution.The code uses Satellite Image Time Series (SITS) based on 
+[FORCE Time Series framework](https://force-eo.readthedocs.io/en/latest/index.html). 
 
-## Description
+### 1. Installing
 
-An in-depth paragraph about your project and overview of use.
+The basic parameters installations are implemented for Ubuntu 22.04 "jammy":
 
-## Getting Started
-
-### Dependencies
-
-* Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-* ex. Windows 10
-
-### Installing
-
-* How/where to download your program
-* Any modifications needed to be made to files/folders
-
-### Executing program
-
-* How to run the program
-* Step-by-step bullets
 ```
-code blocks for commands
+conda create --name SITSslope python==3.9
+conda activate SITSslope
+cd /path/to/repository/slope_spectral_indices
+pip install -r requirements.txt
+sudo apt-get install xterm
 ```
+Notes: The code is build upon the [mowing UDF algorithm](https://github.com/davidfrantz/force-udf/tree/main/python/ts/mowingDetection).
 
-## Help
+### 2. Output
 
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
+The algorithm is pixel based. The output is a merged raster of your area of interest with the slope value per pixel. 
+A positive slope means that the values are increasing in time, a negative value means that the values are decreasing in time.
 
-## Authors
+### 3. Basics
 
-Contributors names / contact info / GitHub Acc
+- The **force_main_slope.py** has default tested parameters that can be modified considering user needs.
+- The main script will create two more files, the parameter file (tsa_UDF.prm) and the User Defined Function (UDF_pixel.py)
+file. The first is related to the needed information to run FORCE datacube; the second is related to the mowing detection algorithm.
 
+![structure](img/slope.png)
 
-## Known Issues
+- For more information about the parameter and UDF files, please check the above links.
 
-* list known issues or limitations
+### Authors
 
+* [Sebastian Valencia](https://github.com/Azarozo19)
 
-## License
+### License
 
-This project is licensed under the [NAME HERE] License - see the LICENSE.md file for details
-
-## References
-
-Inspiration, code snippets, etc.
+This project is licensed under the GNU General Public Licence, Version 3 (GPLv3) - see the LICENSE.md file for details

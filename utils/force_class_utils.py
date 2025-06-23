@@ -30,13 +30,13 @@ def generate_input_feature_line(tif_path, num_layers):
     return f"INPUT_FEATURE = {tif_path} {sequence}"
 
 
-def replace_parameters(filename, replacements):
-    with open(filename, 'r') as f:
-        content = f.read()
-        for key, value in replacements.items():
-            content = content.replace(key, value)
-    with open(filename, 'w') as f:
-        f.write(content)
+# def replace_parameters(filename, replacements):
+#     with open(filename, 'r') as f:
+#         content = f.read()
+#         for key, value in replacements.items():
+#             content = content.replace(key, value)
+#     with open(filename, 'w') as f:
+#         f.write(content)
 
 def extract_coordinates(file_path):
     with open(file_path, 'r') as f:
@@ -71,13 +71,30 @@ def check_and_reproject_shapefile(shapefile_path, target_epsg=3035):
         return shapefile_path
 
 
-def force_class_udf(project_name, force_dir, local_dir, base_path, aois, hold, date_range):
-    # defining parameters outsourced from main script
+def replace_parameters(file_path, replacements):
+    # Open the file to read content
+    with open(file_path, 'r') as file:
+        content = file.read()
 
-    # subprocess.run(['sudo', 'chmod', '-R', '777', f"{Path(temp_folder).parent}"])
-    # subprocess.run(['sudo', 'chmod', '-R', '777', f"{Path(scripts_skel).parent}"])
+    # Replace each parameter using the replacements dictionary
+    for old, new in replacements.items():
+        if old.startswith('DATE_RANGE'):
+            # Use regex to replace the DATE_RANGE line with flexible matching
+            pattern = r'(^DATE_RANGE\s*=\s*)(\S.*\S|\S*)'  # Matches DATE_RANGE line with any spacing
+            content = re.sub(pattern, r'\1' + new, content)
+        else:
+            # Simple string replace for other parameters
+            content = content.replace(old, new)
+
+    # Write the updated content back to the file
+    with open(file_path, 'w') as file:
+        file.write(content)
+
+
+def force_class_udf(project_name, force_dir, local_dir, base_path, date_range, aois, hold) :
     base_path_script = os.getcwd()
     startzeit = time.time()
+
     for aoi in aois:
         print(f"FORCE PROCESSING FOR {aoi}")
 
@@ -88,12 +105,8 @@ def force_class_udf(project_name, force_dir, local_dir, base_path, aois, hold, d
         aoi = check_and_reproject_shapefile(aoi)
         print(f"Reprojected AOI path: {aoi}")
 
-
-
-        ### get force extend
+        # Get FORCE extend
         os.makedirs(f'{base_path}/process/temp/{project_name}/FORCE/{basename}', exist_ok=True)
-
-        # subprocess.run(['sudo', 'chmod', '-R', '777', f"{temp_folder}/{project_name}/FORCE/{basename}"])
 
         shutil.copy(f"{base_path_script}/utils/skel/force_cube_sceleton/datacube-definition.prj",
                     f"{base_path}/process/temp/{project_name}/FORCE/{basename}/datacube-definition.prj")
@@ -101,35 +114,27 @@ def force_class_udf(project_name, force_dir, local_dir, base_path, aois, hold, d
         print(f"Checking AOI path: {aoi} -> Exists: {os.path.exists(aoi)}")
 
         cmd = f'sudo docker run -v {local_dir} -v {force_dir} -u "$(id -u):$(id -g)" davidfrantz/force ' \
-              f'force-tile-extent  {aoi} -d {base_path_script}/utils/skel/force_cube_sceleton -a {base_path}/process/temp/{project_name}/FORCE/{basename}/tile_extent.txt'
+              f'force-tile-extent {aoi} -d {base_path_script}/utils/skel/force_cube_sceleton -a {base_path}/process/temp/{project_name}/FORCE/{basename}/tile_extent.txt'
 
         if hold == True:
             subprocess.run(['xterm', '-hold', '-e', cmd])
         else:
             subprocess.run(['xterm', '-e', cmd])
 
-        # subprocess.run(['sudo','chmod','-R','777',f"{temp_folder}/{project_name}/FORCE/{basename}"])
-
-        #generate_tiles_to_process(base_path, project_name, basename)
-
-        ### mask
+        # Mask
         os.makedirs(f"{base_path}/process/temp/_mask/{project_name}/{basename}", exist_ok=True)
-
-        # subprocess.run(['sudo', 'chmod', '-R', '777', f"{mask_folder}"])
-
         shutil.copy(f"{base_path_script}/utils/skel/force_cube_sceleton/datacube-definition.prj",
                     f"{base_path}/process/temp/_mask/{project_name}/{basename}/datacube-definition.prj")
+
         cmd = f'sudo docker run -v {local_dir} -u "$(id -u):$(id -g)" davidfrantz/force ' \
-              f"force-cube -o {base_path}/process/temp/_mask/{project_name}/{basename} " \
-              f"{aoi}"
+              f"force-cube -o {base_path}/process/temp/_mask/{project_name}/{basename} {aoi}"
 
         if hold == True:
             subprocess.run(['xterm', '-hold', '-e', cmd])
         else:
             subprocess.run(['xterm', '-e', cmd])
-        # subprocess.run(['sudo','chmod','-R','777',f"{mask_folder}/{project_name}/{basename}"])
 
-        ###mask mosaic
+        # Mask Mosaic
         cmd = f'sudo docker run -v {local_dir} -u "$(id -u):$(id -g)" davidfrantz/force ' \
               f"force-mosaic {base_path}/process/temp/_mask/{project_name}/{basename}"
 
@@ -138,10 +143,7 @@ def force_class_udf(project_name, force_dir, local_dir, base_path, aois, hold, d
         else:
             subprocess.run(['xterm', '-e', cmd])
 
-        # subprocess.run(['sudo','chmod','-R','777',f"{temp_folder}/{project_name}/FORCE/{basename}"])
-
-        ###force param
-
+        # FORCE param setup
         os.makedirs(f"{base_path}/process/temp/{project_name}/FORCE/{basename}/provenance", exist_ok=True)
         os.makedirs(f"{base_path}/process/temp/{project_name}/FORCE/{basename}/tiles_tss", exist_ok=True)
 
@@ -149,12 +151,13 @@ def force_class_udf(project_name, force_dir, local_dir, base_path, aois, hold, d
                     f"{base_path}/process/temp/{project_name}/FORCE/{basename}/datacube-definition.prj")
         shutil.copy(f"{base_path_script}/utils/skel/force_cube_sceleton/datacube-definition.prj",
                     f"{base_path}/process/temp/{project_name}/FORCE/{basename}/tiles_tss/datacube-definition.prj")
-        shutil.copy(f"{base_path_script}/utils/skel/tsa_UDF.prm",
+        shutil.copy(f"{base_path_script}/utils/skel/UDF_NoCom.prm",
                     f"{base_path}/process/temp/{project_name}/FORCE/{basename}/UDF_prm.prm")
         shutil.copy(f"{base_path_script}/utils/skel/UDF_pixel.py",
                     f"{base_path}/process/temp/{project_name}/FORCE/{basename}/UDF_slope.py")
 
-        X_TILE_RANGE, Y_TILE_RANGE = extract_coordinates(f"{base_path}/process/temp/{project_name}/FORCE/{basename}/tile_extent.txt")
+        X_TILE_RANGE, Y_TILE_RANGE = extract_coordinates(
+            f"{base_path}/process/temp/{project_name}/FORCE/{basename}/tile_extent.txt")
         DATE_RANGE = date_range
 
         # Define replacements
@@ -169,9 +172,10 @@ def force_class_udf(project_name, force_dir, local_dir, base_path, aois, hold, d
             # PROCESSING EXTENT AND RESOLUTION
             f'X_TILE_RANGE = 0 0': f'X_TILE_RANGE = {X_TILE_RANGE}',
             f'Y_TILE_RANGE = 0 0': f'Y_TILE_RANGE = {Y_TILE_RANGE}',
-            f'DATE_RANGE = YYYY-MM-DD YYYY-MM-DD': f'DATE_RANGE = {DATE_RANGE}',
+            f'DATE_RANGE = YYYY-MM-DD YYYY-MM-DD': f'DATE_RANGE = {DATE_RANGE}',  # Replacing DATE_RANGE here
             f'FILE_PYTHON = NULL': f'FILE_PYTHON = {base_path}/process/temp/{project_name}/FORCE/{basename}/UDF_slope.py',
         }
+
         # Replace parameters in the file
         replace_parameters(f"{base_path}/process/temp/{project_name}/FORCE/{basename}/UDF_prm.prm", replacements)
 
