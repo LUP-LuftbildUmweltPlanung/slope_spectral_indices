@@ -91,7 +91,8 @@ def forcepy_pixel(inarray, outarray, dates, sensors, bandnames, nodata, nproc):
             slope = (N * sum_xy - sum_x * sum_y) / denominator
 
             # Scale slope by 100 to keep two decimal places
-            scaled_slope = round(slope * 100, 2)
+            scaled_slope = slope * 100
+            scaled_slope = round(scaled_slope,2)
 
             # Ensure we do not round too much
             #if abs(scaled_slope) < 1e-3:
