@@ -15,7 +15,6 @@ cd /path/to/repository/slope_spectral_indices
 pip install -r requirements.txt
 sudo apt-get install xterm
 ```
-Notes: The code is build upon the [mowing UDF algorithm](https://github.com/davidfrantz/force-udf/tree/main/python/ts/mowingDetection).
 
 ### 2. Output
 
